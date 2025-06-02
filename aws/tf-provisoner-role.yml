@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Generation of policies and entities that will be used to provision the resources for the leonomano-do-k8s-cluster project.
+
+Parameters:
+  Env:
+    Type: String
+    Description: Project Environment
+    Default: dev
+  ProjectName:
+    Type: String
+    Description: Project Name
+    Default: leonomano-do-k8s-cluster
+  AppName:
+    Type: String
+    Description: Application Name
+    Default: tf-service-role
+  UserName:
+    Type: String
+    Description: Name of provisioner user
+    Default: provisioner
+
+Resources:
+  ProvisioningGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - !Ref AppName
+          - archicture-provisioning
+      Policies:
+        - PolicyName: !Join
+            - '-'
+            - - !Ref ProjectName
+              - !Ref AppName
+              - assume-role-service
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowAssumeRole
+                Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !GetAtt ProvisionerRole.Arn
+
+  S3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Politica para escritura y lectura del servicio de S3'
+      ManagedPolicyName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - !Ref AppName
+          - 's3-management'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowS3Actions
+            Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:DeleteBucket
+              - s3:DeleteBucketPolicy
+              - s3:DeleteObject*
+              - s3:GetAccelerateConfiguration
+              - s3:GetBucket*
+              - s3:GetEncryptionConfiguration
+              - s3:GetLifecycleConfiguration
+              - s3:GetMetricsConfiguration
+              - s3:GetObject*
+              - s3:GetReplicationConfiguration
+              - s3:ListBucket*
+              - s3:PutBucketAcl
+              - s3:PutBucketLogging
+              - s3:PutBucketNotification
+              - s3:PutBucketOwnershipControls
+              - s3:PutBucketPolicy
+              - s3:PutBucketPublicAccessBlock
+              - s3:PutBucketTagging
+              - s3:PutBucketVersioning
+              - s3:PutEncryptionConfiguration
+              - s3:PutObject*
+              - s3:*BucketWebsite
+            Resource:
+              - !Sub arn:aws:s3:::${Env}-${ProjectName}*
+
+          - Sid: AllowNoResource
+            Effect: Allow
+            Action: s3:ListAllMyBuckets
+            Resource: '*'
+
+  DynamoPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'Politica que contiene los permisos de S3 y Dynamo para alojar y bloquear el estado del proyecto de terraform'
+      ManagedPolicyName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - !Ref AppName
+          - 'dynamo-management'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowDynamoDBTableActions
+            Effect: Allow
+            Action:
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+            Resource: !Sub arn:aws:dynamodb:*:${AWS::AccountId}:table/${Env}-${ProjectName}*
+
+  SSMManagerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: This policy grants read and write permissions for System Manager parameters.
+      ManagedPolicyName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - !Ref AppName
+          - ssm-parameters-rw
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowWithResource
+            Effect: Allow
+            Action:
+              # [DeleteParameter, DeleteParameters
+              - ssm:DeleteParameter*
+              - ssm:GetParameter*
+              - ssm:PutParameter
+              # [LabelParameterVersion, UnlabelParameterVersion]
+              - ssm:*ParameterVersion
+              # [AddTagsToResource, ListTagsForResource, RemoveTagsFromResource]
+              - ssm:*Tags*
+              # [DeleteResourcePolicy, GetResourcePolicies, PutResourcePolicy]
+              - ssm:*ResourcePolic*
+            Resource:
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/account-configuration*/${Env}/*
+          - Sid: AllowWithoutResource
+            Effect: Allow
+            Action:
+              - ssm:DescribeParameters
+            Resource: '*'
+
+  ProvisionerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - !Ref AppName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub '${AWS::AccountId}'
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref S3Policy
+        - !Ref DynamoPolicy
+        - !Ref SSMManagerPolicy
+
+  AdditionToProvisioningGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref ProvisioningGroup
+      Users:
+        - leo_dev
+
+Outputs:
+  ProvisionerRoleARN:
+    Description: Terraform Role Service ARN
+    Value: !GetAtt ProvisionerRole.Arn
