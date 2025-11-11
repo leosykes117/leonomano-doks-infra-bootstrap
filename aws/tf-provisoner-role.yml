@@ -147,6 +147,40 @@ Resources:
               - ssm:DescribeParameters
             Resource: '*'
 
+  IAMPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: This policy grants permissions to manage IAM identity resources and policies.
+      ManagedPolicyName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - !Ref AppName
+          - 'iam-management'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowScopedUserAndAccessKeyManagement
+            Effect: Allow
+            Action:
+              - iam:CreateAccessKey
+              - iam:CreateUser
+              - iam:DeleteAccessKey
+              - iam:DeleteUser
+              - iam:DeleteUserPolicy
+              - iam:GetUser
+              - iam:GetUserPolicy
+              - iam:GetAccessKeyLastUsed
+              - iam:ListAccessKeys
+              - iam:ListUserTags
+              - iam:ListGroupsForUser
+              - iam:ListUsers
+              - iam:PutUserPolicy
+              - iam:TagUser
+              - iam:UntagUser
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:user/${Env}/${ProjectName}/*
+
   ProvisionerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -166,6 +200,7 @@ Resources:
         - !Ref S3Policy
         - !Ref DynamoPolicy
         - !Ref SSMManagerPolicy
+        - !Ref IAMPolicy
 
   AdditionToProvisioningGroup:
     Type: AWS::IAM::UserToGroupAddition
