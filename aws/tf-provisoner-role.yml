@@ -20,6 +20,8 @@ Parameters:
     Description: Name of provisioner user
     Default: provisioner
 
+Transform: AWS::LanguageExtensions
+
 Resources:
   ProvisioningGroup:
     Type: AWS::IAM::Group
@@ -202,14 +204,49 @@ Resources:
         - !Ref SSMManagerPolicy
         - !Ref IAMPolicy
 
+  MinikubeArgoProvisionerUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Join
+        - '-'
+        - - !Ref Env
+          - !Ref ProjectName
+          - 'minikube-argo-workflows'
+      Path: !Sub /${Env}/${ProjectName}/${AppName}/users/
+
+  MinikubeArgoProvisionerUserAccessKeys:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref MinikubeArgoProvisionerUser
+
+  MiniKubeArgoProvisionerUserKeysParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /account-configuration/${Env}/minikube_argo_provisioner_access_keys
+      Type: String
+      Value:
+        Fn::ToJsonString:
+          access-key: !Ref MinikubeArgoProvisionerUserAccessKeys
+          secret-access-key: !GetAtt MinikubeArgoProvisionerUserAccessKeys.SecretAccessKey
+      Description: SSM Parameter with the Acess Keys to use in Minikube Argo Workflows
+      Tags:
+        Environment: !Sub ${Env}
+
   AdditionToProvisioningGroup:
     Type: AWS::IAM::UserToGroupAddition
     Properties:
       GroupName: !Ref ProvisioningGroup
       Users:
         - leo_dev
+        - !Ref MinikubeArgoProvisionerUser
 
 Outputs:
   ProvisionerRoleARN:
     Description: Terraform Role Service ARN
     Value: !GetAtt ProvisionerRole.Arn
+  MinikubeArgoProvisionerARN:
+    Description: AWS User ARN to use in Minikube Argo Workflow
+    Value: !GetAtt MinikubeArgoProvisionerUser.Arn
+  MiniKubeArgoProvisionerUserKeysParam:
+    Description: Contains the AWS SSM Param Name with the access keys for Minikube Argo Workflow Provisioner User
+    Value: !Ref MiniKubeArgoProvisionerUserKeysParam
