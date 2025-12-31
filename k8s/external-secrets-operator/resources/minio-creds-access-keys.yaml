@@ -1,0 +1,16 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: leonomano-do-k8s-cluster-my-minio-cred
+  namespace: argo
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-dev-parameter-store
+  target:
+    name: my-minio-cred
+    deletionPolicy: Delete
+  dataFrom:
+    - extract:
+        key: /account-configuration/dev/minio-access-keys

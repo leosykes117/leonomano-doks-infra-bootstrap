@@ -1,0 +1,28 @@
+mode: standalone
+image:
+  repository: bitnamilegacy/minio
+
+console:
+  image:
+    repository: bitnamilegacy/minio-object-browser
+
+auth:
+  existingSecret: my-minio-cred
+  rootUserSecretKey: accesskey
+  rootPasswordSecretKey: secretkey
+
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 80Gi
+
+defaultBuckets: repos
+
+podSecurityContext:
+  fsGroupChangePolicy: Always
+
+defaultInitContainers:
+  volumePermissions:
+    enabled: true
+    image:
+      repository: bitnamilegacy/os-shell
