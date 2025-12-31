@@ -3,7 +3,6 @@ SHELL := /bin/bash
 NAMESPACE    ?= argo
 ARGO_VERSION ?= v3.7.6
 ARGO_SERVER_SVC ?= argo-server
-RELEASE   :=
 
 KUSTOMIZE_DIR ?= .
 KUSTOMIZE	:= kustomize
