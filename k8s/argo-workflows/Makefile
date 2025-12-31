@@ -16,8 +16,8 @@ render:
 	@echo "🔧 Rendering Argo Workflows manifests..."
 	@mkdir -p $$(dirname "$(RENDERED)")
 	curl -fsSL \
-  	$(ARGO_INSTALL_URL) \
-  	-o "$(RENDERED)"
+		$(ARGO_INSTALL_URL) \
+		-o "$(RENDERED)"
 	@echo "Rendered: $(RENDERED)"
 
 apply: render

@@ -16,10 +16,10 @@ render:
 	@echo "🔧 Rendering ESO Helm chart..."
 	@mkdir -p $$(dirname "$(RENDERED)")
 	helm template $(RELEASE) $(CHART) \
-	  -n $(NAMESPACE) \
+		-n $(NAMESPACE) \
 		--debug --wait --timeout 5m0s \
-	  -f $(VALUES) \
-	  | tee $(RENDERED)
+		-f $(VALUES) \
+		| tee $(RENDERED)
 	@echo "Rendered: $(RENDERED)"
 
 ## Apply patched manifests with Kustomize
