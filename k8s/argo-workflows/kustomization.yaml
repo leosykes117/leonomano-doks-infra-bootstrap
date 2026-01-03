@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - rendered/argo-workflows.yaml
   - resources/artifact-repositories.yaml
+  - resources/rbac-argo-workflow-runner.yaml
 
 patches:
   - path: patches/set-argo-server-auth-mode.yaml
@@ -12,4 +13,10 @@ patches:
       version: v1
       kind: Deployment
       name: argo-server
+      namespace: argo
+  - path: patches/workflow-controller-configmap.yaml
+    target:
+      version: v1
+      kind: ConfigMap
+      name: workflow-controller-configmap
       namespace: argo
