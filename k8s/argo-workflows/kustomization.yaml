@@ -4,6 +4,9 @@ kind: Kustomization
 resources:
   - rendered/argo-workflows.yaml
   - resources/artifact-repositories.yaml
+  - resources/workflow-rbac.yaml
+  - resources/aws-minikube-argo-keys.yaml
+  - resources/external-secret-do-token.yaml
 
 patches:
   - path: patches/set-argo-server-auth-mode.yaml
@@ -12,4 +15,10 @@ patches:
       version: v1
       kind: Deployment
       name: argo-server
+      namespace: argo
+  - path: patches/workflow-controller-defaults.yaml
+    target:
+      version: v1
+      kind: ConfigMap
+      name: workflow-controller-configmap
       namespace: argo

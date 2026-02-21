@@ -56,3 +56,7 @@ delete:
 clean:
 	@echo "🧹 Cleaning rendered files..."
 	rm -f $(RENDERED)
+
+install-crds:
+	@echo "📦 Installing ESO CRDs..."
+	kubectl apply -f "https://raw.githubusercontent.com/external-secrets/external-secrets/v2.0.0/deploy/crds/bundle.yaml" --server-side
