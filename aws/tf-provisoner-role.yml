@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   Generation of policies and entities that will be used to provision the resources for the leonomano-do-k8s-cluster project.
 
@@ -23,41 +23,47 @@ Parameters:
 Transform: AWS::LanguageExtensions
 
 Resources:
+  AssumeRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Policy for assuming provisioner role"
+      ManagedPolicyName: !Join
+        - "-"
+        - - !Ref ProjectName
+          - !Ref AppName
+          - assume-role-service
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAssumeRole
+            Effect: Allow
+            Action: sts:AssumeRole
+            Resource: !GetAtt ProvisionerRole.Arn
+      Groups:
+        - !Ref ProvisioningGroup
+
   ProvisioningGroup:
     Type: AWS::IAM::Group
     Properties:
       GroupName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
           - !Ref AppName
           - archicture-provisioning
-      Policies:
-        - PolicyName: !Join
-            - '-'
-            - - !Ref ProjectName
-              - !Ref AppName
-              - assume-role-service
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: AllowAssumeRole
-                Effect: Allow
-                Action: sts:AssumeRole
-                Resource: !GetAtt ProvisionerRole.Arn
 
   S3Policy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: 'Politica para escritura y lectura del servicio de S3'
+      Description: "Politica para escritura y lectura del servicio de S3"
       ManagedPolicyName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
           - !Ref AppName
-          - 's3-management'
+          - "s3-management"
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowS3Actions
             Effect: Allow
@@ -91,20 +97,20 @@ Resources:
           - Sid: AllowNoResource
             Effect: Allow
             Action: s3:ListAllMyBuckets
-            Resource: '*'
+            Resource: "*"
 
   DynamoPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: 'Politica que contiene los permisos de S3 y Dynamo para alojar y bloquear el estado del proyecto de terraform'
+      Description: "Politica que contiene los permisos de S3 y Dynamo para alojar y bloquear el estado del proyecto de terraform"
       ManagedPolicyName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
           - !Ref AppName
-          - 'dynamo-management'
+          - "dynamo-management"
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowDynamoDBTableActions
             Effect: Allow
@@ -120,13 +126,13 @@ Resources:
     Properties:
       Description: This policy grants read and write permissions for System Manager parameters.
       ManagedPolicyName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
           - !Ref AppName
           - ssm-parameters-rw
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowWithResource
             Effect: Allow
@@ -147,20 +153,20 @@ Resources:
             Effect: Allow
             Action:
               - ssm:DescribeParameters
-            Resource: '*'
+            Resource: "*"
 
   IAMPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: This policy grants permissions to manage IAM identity resources and policies.
       ManagedPolicyName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
           - !Ref AppName
-          - 'iam-management'
+          - "iam-management"
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowScopedUserAndAccessKeyManagement
             Effect: Allow
@@ -179,24 +185,30 @@ Resources:
               - iam:ListUsers
               - iam:PutUserPolicy
               - iam:TagUser
+              - iam:UpdateUser
               - iam:UntagUser
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:user/${Env}/${ProjectName}/*
+              - !Sub arn:aws:iam::${AWS::AccountId}:user/${Env}/${ProjectName}*
+          - Sid: AllowListAccessKeysWithWildcard
+            Effect: Allow
+            Action:
+              - iam:ListAccessKeys
+            Resource: "*"
 
   ProvisionerRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
           - !Ref AppName
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub '${AWS::AccountId}'
+              AWS: !Sub "${AWS::AccountId}"
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - !Ref S3Policy
@@ -208,10 +220,10 @@ Resources:
     Type: AWS::IAM::User
     Properties:
       UserName: !Join
-        - '-'
+        - "-"
         - - !Ref Env
           - !Ref ProjectName
-          - 'minikube-argo-workflows'
+          - "minikube-argo-workflows"
       Path: !Sub /${Env}/${ProjectName}/${AppName}/users/
 
   MinikubeArgoProvisionerUserAccessKeys:

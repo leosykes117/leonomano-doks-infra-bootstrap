@@ -23,7 +23,7 @@ rules:
   # Para leer secrets/configmaps usados por artifacts/envFrom/etc
   - apiGroups: [""]
     resources: ["secrets", "configmaps"]
-    verbs: ["get"]
+    verbs: ["get", "create", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -38,3 +38,29 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: argo-workflow
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-workflow-manage-secrets
+  namespace: argo
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-workflow-manage-secrets
+  namespace: argo
+subjects:
+  - kind: ServiceAccount
+    name: argo-workflow
+    namespace: argo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-workflow-manage-secrets
