@@ -19,6 +19,14 @@ Parameters:
     Type: String
     Description: Name of provisioner user
     Default: provisioner
+  GithubOrg:
+    Type: String
+    Description: GitHub organization/user that owns the CI/CD repository
+    Default: leosykes117
+  GithubRepo:
+    Type: String
+    Description: GitHub repository allowed to assume the GitHub Actions OIDC role
+    Default: leonomano-doks-tg-infra
 
 Transform: AWS::LanguageExtensions
 
@@ -92,7 +100,7 @@ Resources:
               - s3:PutObject*
               - s3:*BucketWebsite
             Resource:
-              - !Sub arn:aws:s3:::${Env}-${ProjectName}*
+              - !Sub arn:${AWS::Partition}:s3:::${Env}-${ProjectName}*
 
           - Sid: AllowNoResource
             Effect: Allow
@@ -119,7 +127,7 @@ Resources:
               - dynamodb:DescribeTable
               - dynamodb:GetItem
               - dynamodb:PutItem
-            Resource: !Sub arn:aws:dynamodb:*:${AWS::AccountId}:table/${Env}-${ProjectName}*
+            Resource: !Sub arn:${AWS::Partition}:dynamodb:*:${AWS::AccountId}:table/${Env}-${ProjectName}*
 
   SSMManagerPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -148,7 +156,7 @@ Resources:
               # [DeleteResourcePolicy, GetResourcePolicies, PutResourcePolicy]
               - ssm:*ResourcePolic*
             Resource:
-              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/account-configuration*/${Env}/*
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/account-configuration*/${Env}/*
           - Sid: AllowWithoutResource
             Effect: Allow
             Action:
@@ -188,7 +196,7 @@ Resources:
               - iam:UpdateUser
               - iam:UntagUser
             Resource:
-              - !Sub arn:aws:iam::${AWS::AccountId}:user/${Env}/${ProjectName}*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:user/${Env}/${ProjectName}*
           - Sid: AllowListAccessKeysWithWildcard
             Effect: Allow
             Action:
@@ -215,6 +223,28 @@ Resources:
         - !Ref DynamoPolicy
         - !Ref SSMManagerPolicy
         - !Ref IAMPolicy
+
+  GithubActionsProvisionerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - "-"
+        - - !Ref Env
+          - !Ref ProjectName
+          - "github-actions-oidc-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GithubOrg}/${GithubRepo}:*"
+      ManagedPolicyArns:
+        - !Ref AssumeRolePolicy
 
   MinikubeArgoProvisionerUser:
     Type: AWS::IAM::User
@@ -256,6 +286,12 @@ Outputs:
   ProvisionerRoleARN:
     Description: Terraform Role Service ARN
     Value: !GetAtt ProvisionerRole.Arn
+  GithubActionsProvisionerRoleARN:
+    Description: >
+      Role ARN for GitHub Actions to assume via OIDC (aws-actions/configure-aws-credentials).
+      Set this as the AWS_ROLE_TO_ASSUME secret/variable for this environment in the
+      leonomano-doks-tg-infra repo (repo or GitHub Environment scoped secret).
+    Value: !GetAtt GithubActionsProvisionerRole.Arn
   MinikubeArgoProvisionerARN:
     Description: AWS User ARN to use in Minikube Argo Workflow
     Value: !GetAtt MinikubeArgoProvisionerUser.Arn
