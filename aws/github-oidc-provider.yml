@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  One-time, account-level registration of GitHub Actions as an OIDC identity
+  provider in IAM. This is a singleton resource (one per AWS account) and is
+  intentionally kept out of tf-provisoner-role.yml, which is deployed once
+  per environment (dev/staging/prod) and would otherwise try to recreate it
+  on every environment's stack, causing an "already exists" failure.
+  Deploy this stack exactly once per AWS account.
+
+Resources:
+  GithubActionsOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      # ThumbprintList is optional as of the current AWS::IAM::OIDCProvider
+      # spec: AWS validates GitHub's well-known OIDC IdP certificate chain
+      # directly and no longer requires a pinned thumbprint. Omitted here to
+      # avoid maintaining a value that AWS itself no longer checks.
+
+Outputs:
+  GithubActionsOidcProviderArn:
+    Description: >
+      ARN of the GitHub Actions OIDC provider. Referenced by
+      tf-provisoner-role.yml (per environment) using the deterministic
+      arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com
+      pattern, so no cross-stack export/import is required.
+    Value: !Ref GithubActionsOidcProvider
