@@ -224,28 +224,6 @@ Resources:
         - !Ref SSMManagerPolicy
         - !Ref IAMPolicy
 
-  GithubActionsProvisionerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join
-        - "-"
-        - - !Ref Env
-          - !Ref ProjectName
-          - "github-actions-oidc-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
-            Action: sts:AssumeRoleWithWebIdentity
-            Condition:
-              StringEquals:
-                token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GithubOrg}/${GithubRepo}:*"
-      ManagedPolicyArns:
-        - !Ref AssumeRolePolicy
-
   MinikubeArgoProvisionerUser:
     Type: AWS::IAM::User
     Properties:
@@ -281,6 +259,51 @@ Resources:
       Users:
         - leo_dev
         - !Ref MinikubeArgoProvisionerUser
+
+  #### GitHub Actions OIDC Role and Policy for provisioning via GitHub Actions workflows (per environment) ####
+  GithubActionsCIReadSSMParamPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Read-only SSM access for GitHub Actions workflows
+      ManagedPolicyName: !Join
+        - "-"
+        - - !Ref Env
+          - !Ref ProjectName
+          - "github-actions-ci-ssm-params-read"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowReadSecretsParameters
+            Effect: Allow
+            Action:
+              - ssm:GetParameter
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/account-configuration/${Env}/digital_ocean_token
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/account-configuration/${Env}/external-secrets-operator/secret-store-access-credentials
+
+  GithubActionsProvisionerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - "-"
+        - - !Ref Env
+          - !Ref ProjectName
+          - "github-actions-oidc-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GithubOrg}/${GithubRepo}:*"
+      ManagedPolicyArns:
+        - !Ref AssumeRolePolicy
+        - !Ref GithubActionsCIReadSSMParamPolicy
 
 Outputs:
   ProvisionerRoleARN:
